@@ -11,7 +11,7 @@ All settings from left panel are directly mapped to [LÖVE ParticleSystem](https:
 By default tool uses internal image set for particles. To use our own image just put it into project root folder or LÖVE save folder (look for [love.filesystem](https://love2d.org/wiki/love.filesystem)).
 On next launch it will be accessible from dropdown menu on tool panel. 
 
-Put produced .lua file and particle image somewhere into your project. Use next code to load particle system and bring it to life.
+Put produced `.lua` file and particle image somewhere into your project. Use next code to load particle system and bring it to life.
 
 ```lua
 local initParticleSystem
@@ -100,5 +100,8 @@ function initParticleSystem(particle_settings)
 end
 ```
 
-Or you can put content of particle system settings directly into your code to specified variable and just call initParticleSystem(your_particle_settings) to
-make particle system.
+Or you can put content of particle system settings directly into your code to specified variable and just call 
+
+    ps = initParticleSystem(your_particle_settings)
+
+to make particle system.
