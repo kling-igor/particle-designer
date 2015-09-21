@@ -96,6 +96,12 @@ function colorPicker:_CreateInterface()
 	self.frame:SetModal(utils.ternary(self.options.modal ~= nil, self.options.modal, true))
 	self.frame:SetScreenLocked(utils.ternary(self.options.screenLocked ~= nil, self.options.screenLocked, true))
 	self.frame:SetDraggable(true)
+	
+	self.frame.OnClose = function(object)
+		if self.options.oncancel then
+			self.options.oncancel()
+		end
+	end
 
 	self:_CreateColorspace()
 	self:_CreateInputFields()

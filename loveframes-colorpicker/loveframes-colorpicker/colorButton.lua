@@ -57,6 +57,10 @@ function colorButton(options)
 	end
 
 	button.OnClick = function(object)
+		if options.onclick then
+			options.onclick()
+		end
+		
 		local function func(c)
 			object:SetColor(c)
 			if options.callback then

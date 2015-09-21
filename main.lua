@@ -1,19 +1,10 @@
---[[
-https://love2d.org/wiki/Game_Distribution
-https://love2d.org/wiki/love.filesystem.isFused
-https://love2d.org/wiki/love.filesystem.getSourceBaseDirectory
-https://love2d.org/wiki/love.filesystem
-]]
-
 local TSerial = require 'Tserial'
-loveframes = require 'loveframes'
-require("loveframes-colorpicker.loveframes-colorpicker")
+loveframes = require 'LoveFrames'
+require("LoveFrames-ColorPicker.LoveFrames-ColorPicker")
 require 'lovefs/lovefs'
 require 'lovefs/dialogs'
 
-
--- содержит вначале дефолтные значения
--- в процессе тюнинга - актуальные значени
+-- particle system parameters working copy
 local particle_settings =  {
 	radialacc_min = -500,
 	linear_acceleration_ymax = 0,
@@ -57,7 +48,6 @@ local particle_settings =  {
 	spin_min = 0,
 	spin_variation = 1}
 
-
 local filename = ""
 local ps = nil -- particle system
 local blendMode = 'additive'
@@ -66,21 +56,17 @@ local dirty = false
 local filesystem
 local rootPanel
 ---------------------------------------------------------------------------------------------------
-
 function makeDropdownList(parameters)
-	
-	local y = parameters.y
+	local x, y = parameters.x, parameters.y
 	
 	local label = loveframes.Create("text", parameters.parent)
-	label:SetPos(5, y) -- 5,45
+	label:SetPos(x, y)
 	label:SetLinksEnabled(false)
 	label:SetText(parameters.label)
-
 	
 	local spreadMultichoice = loveframes.Create("multichoice",  parameters.parent)
-	spreadMultichoice:SetPos(80, y - 5) -- 5,40
-	spreadMultichoice:SetWidth(195 - 20)
-
+	spreadMultichoice:SetPos(x + 75, y - 5) 
+	spreadMultichoice:SetWidth(175)
 
 	for i = 1, #parameters.values do
 		spreadMultichoice:AddChoice(parameters.values[i])
@@ -89,7 +75,6 @@ function makeDropdownList(parameters)
 	spreadMultichoice:SetChoice(parameters.defaultValue or parameters.values[1])
 	
 	spreadMultichoice.OnChoiceSelected = function(object, choice)
-		-- particle_settings.image = choice
 		if parameters.callback and type(parameters.callback) == 'function' then
 			parameters.callback(choice)
 		end
@@ -99,67 +84,53 @@ function makeDropdownList(parameters)
 		local tooltip = loveframes.Create("tooltip")
 		tooltip:SetObject(label)
 		tooltip:SetPadding(5)
-	--	tooltip:SetFollowObject(true)
-	--	tooltip:SetFollowCursor(true)
 		tooltip:SetText(parameters.tooltip)
 	end
 end
 ---------------------------------------------------------------------------------------------------
 function makeSlider(parameters)
-	
-	local y = parameters.y
+	local x, y = parameters.x, parameters.y
 	
 	local label = loveframes.Create("text", parameters.parent)
 	label:SetText(parameters.label)
-	label:SetPos(5, y) -- 5, 0
+	label:SetPos(x, y)
 
 	local slider = loveframes.Create("slider", parameters.parent)
-	slider:SetPos(5, y + 15) -- 5, 15
-	slider:SetWidth(200 - 20)
-	
+	slider:SetPos(x, y + 15)
+	slider:SetWidth(180)
 	
 	slider:SetMinMax(parameters.min or 0, parameters.max)
-	slider:SetDecimals(parameters.decimals or 0) -- точек после запятой
+	slider:SetDecimals(parameters.decimals or 0)
 	slider:SetValue(parameters.defaultValue or 0)
-	
 	
 	local numberbox 
 	slider.OnValueChanged = function(object)
---				print("The slider's value changed to : " ..object:GetValue())
 		numberbox:SetValue(object:GetValue())
 		if parameters.callback and type(parameters.callback) == 'function' then
 			parameters.callback(object:GetValue())
 		end
 	end
---	slider.Update = function(object, dt)
---		object:CenterX()
---	end
+
 	slider.OnRelease = function(object)
---					print("The slider button has been released.")
 		end
 
-
 	numberbox = loveframes.Create("numberbox", parameters.parent)
-	numberbox:SetPos(210 - 20, y + 10) -- 210, 10
+	numberbox:SetPos(x + 185, y + 10)
 	numberbox:SetSize(65, 25)
 
 	numberbox:SetIncreaseAmount(parameters.increaseStep or 1)
 	numberbox:SetDecreaseAmount(parameters.decreaseStep or 1)
 	numberbox:SetMinMax(parameters.min or 0, parameters.max)
-	numberbox:SetDecimals(parameters.decimals or 0) -- точек после запятой
+	numberbox:SetDecimals(parameters.decimals or 0)
 	numberbox:SetValue(parameters.defaultValue or 0)
 	
 	numberbox.OnValueChanged = function(object, value)
---					print("The object's new value is " ..value)
 			slider:SetValue(object:GetValue())
 			
 			if parameters.callback and type(parameters.callback) == 'function' then
 				parameters.callback(object:GetValue())
 			end
 		end
-
-
-
 
 	if parameters.tooltip then
 		local tooltip = loveframes.Create("tooltip")
@@ -170,119 +141,73 @@ function makeSlider(parameters)
 end
 ---------------------------------------------------------------------------------------------------
 function makeDoubleSlider(parameters)
-	
-	local y = parameters.y
+	local x, y = parameters.x, parameters.y
 	
 	local label = loveframes.Create("text", parameters.parent)
 	label:SetText(parameters.label)
-	label:SetPos(5, y - 10) -- 5, 0
+	label:SetPos(x, y - 10)
 
 	local minNumberbox = nil
 	local maxNumberbox = nil
-
 	
 	local minCallback = parameters.minCallback
 	local maxCallback = parameters.maxCallback
 
---[[
-	local slider = loveframes.Create("slider", parameters.parent)
-	slider:SetPos(5, y + 15) -- 5, 15
-	slider:SetWidth(200 - 20)
-	
-	
-	slider:SetMinMax(parameters.min or 0, parameters.max)
-	slider:SetDecimals(parameters.decimals or 0) -- точек после запятой
-	slider:SetValue(parameters.defaultValue or 0)
-	
-	
-	local numberbox 
-	slider.OnValueChanged = function(object)
---				print("The slider's value changed to : " ..object:GetValue())
-		numberbox:SetValue(object:GetValue())
-		if parameters.callback and type(parameters.callback) == 'function' then
-			parameters.callback(object:GetValue())
-		end
-	end
---	slider.Update = function(object, dt)
---		object:CenterX()
---	end
-	slider.OnRelease = function(object)
---					print("The slider button has been released.")
-		end
-]]
 	local slider = loveframes.Create("doubleslider", parameters.parent)
-	slider:SetPos(75, y + 15)
-	slider:SetWidth(130 - 20)
+	slider:SetPos(x + 70, y + 15)
+	slider:SetWidth(110)
 	slider:SetButtonSize(10, 20)
 	
-    -- пределы
 	slider:SetMinMax(parameters.min or 0, parameters.max or 1)
-	
-	-- значение для максимального бегунка
 	slider:SetMaxValue(parameters.defaultMaxValue or 1)
-	
 	slider:SetDecimals(parameters.decimals or 0)
-
-	-- значение минимального бегунка
 	slider:SetMinValue(parameters.defaultMinValue or 0)	
 
 	slider.OnMinValueChanged = function(object)
-		
 		minNumberbox:SetValue(object:GetMinValue())
-		
---		print("The slider's min value changed to : " ..object:GetMinValue())
 		if minCallback then
 			minCallback(object:GetMinValue())
 		end
 	end
 
 	slider.OnMaxValueChanged = function(object)
-		
 		maxNumberbox:SetValue(object:GetMaxValue())
-		
---		print("The slider's max value changed to : " ..object:GetMaxValue())
 		if maxCallback then
 			maxCallback(object:GetMaxValue())
 		end
 	end
 
-
-
 	minNumberbox = loveframes.Create("numberbox", parameters.parent)
-	minNumberbox:SetPos(5, y + 10) -- 210, 10
+	minNumberbox:SetPos(x, y + 10)
 	minNumberbox:SetSize(65, 25)
 
 	minNumberbox:SetIncreaseAmount(parameters.increaseStep or 1)
 	minNumberbox:SetDecreaseAmount(parameters.decreaseStep or 1)
 	minNumberbox:SetMinMax(parameters.min or 0, parameters.defaultMaxValue)
-	minNumberbox:SetDecimals(parameters.decimals or 0) -- точек после запятой
+	minNumberbox:SetDecimals(parameters.decimals or 0)
 	
 	minNumberbox:SetValue(parameters.defaultMinValue or 0)
 	
 	minNumberbox.OnValueChanged = function(object, value)
---			print("The object's new value is " ..value)
 			slider:SetMinValue(object:GetValue())
 			
 			if minCallback and type(minCallback) == 'function' then
 				minCallback(object:GetValue())
 			end
 		end
-	
-
 
 	maxNumberbox = loveframes.Create("numberbox", parameters.parent)
-	maxNumberbox:SetPos(210 - 20, y + 10) -- 210, 10
+	maxNumberbox:SetPos(x + 185, y + 10)
 	maxNumberbox:SetSize(65, 25)
 
 	maxNumberbox:SetIncreaseAmount(parameters.increaseStep or 1)
 	maxNumberbox:SetDecreaseAmount(parameters.decreaseStep or 1)
 	maxNumberbox:SetMinMax(parameters.defaultMinValue or 0, parameters.max)
-	maxNumberbox:SetDecimals(parameters.decimals or 0) -- точек после запятой
+	maxNumberbox:SetDecimals(parameters.decimals or 0)
 
 	maxNumberbox:SetValue(parameters.defaultMaxValue or 0)
 	
 	maxNumberbox.OnValueChanged = function(object, value)
---					print("The object's new value is " ..value)
 			slider:SetMaxValue(object:GetValue())
 			
 			if maxCallback and type(maxCallback) == 'function' then
@@ -290,22 +215,18 @@ function makeDoubleSlider(parameters)
 			end
 		end
 
-
 	if parameters.tooltip then
 		local tooltip = loveframes.Create("tooltip")
 		tooltip:SetObject(label)
 		tooltip:SetPadding(5)
 		tooltip:SetText(parameters.tooltip)
 	end
-
 end
 ---------------------------------------------------------------------------------------------------
 local function saveParticleSystem(filepath)
-	
 	local path, file, ext = string.match(filepath, "(.-)([^\\/]-%.?([^%.\\/]*))$")
 	
 	local tosave = "return "..Tserial.pack(particle_settings, true, true)
-	
 	
 	if love.filesystem.exists(file) then
 		print("File "..file.." exists. Will overwrite...")
@@ -321,40 +242,30 @@ local function saveParticleSystem(filepath)
 end
 ---------------------------------------------------------------------------------------------------
 
-
 local makeGUI
 local initParticleSystem
 
-
 local function loadParticleSystem(filepath)
-	
 	local path, file, ext = string.match(filepath, "(.-)([^\\/]-%.?([^%.\\/]*))$")
 	
 	local ok, chunk, result
-	ok, chunk = pcall( love.filesystem.load, file ) -- load the chunk safely
+	ok, chunk = pcall( love.filesystem.load, file )
 	
 	if not ok then
-		print('The following error happend: ' .. tostring(chunk))
+		print('The following error happend: '..tostring(chunk))
 	else
-		ok, particle_settings = pcall(chunk) -- execute the chunk safely
+		ok, particle_settings = pcall(chunk)
 	 
 		if not ok then -- will be false if there is an error
-			print('The following error happened: ' .. tostring(result))
+			print('The following error happened: '..tostring(result))
 		else
-			
-			rootPanel:Remove()
 			rootPanel = nil
 			
-			ps:reset()
-			ps = nil
 			ps = initParticleSystem(particle_settings)
-			
 			ps:setPosition(300 + (love.window.getWidth() - 300) / 2, love.window.getHeight() / 2)
-
-			makeGUI()
-	
 			ps:start() 
 
+			makeGUI()
 		end
 	end	
 end
@@ -368,7 +279,8 @@ function initParticleSystem(particle_settings)
 	
 	local colors = {}
     for i = 1, 8 do 
-        if particle_settings["colors"][i][1] ~= 0 or particle_settings["colors"][i][2] ~= 0 or particle_settings["colors"][i][3] ~= 0 or particle_settings["colors"][i][4] ~= 0 then
+        if particle_settings["colors"][i][1] ~= 0 or particle_settings["colors"][i][2] ~= 0 or
+		   particle_settings["colors"][i][3] ~= 0 or particle_settings["colors"][i][4] ~= 0 then
             table.insert(colors, particle_settings["colors"][i][1] or 0)
             table.insert(colors, particle_settings["colors"][i][2] or 0)
             table.insert(colors, particle_settings["colors"][i][3] or 0)
@@ -377,8 +289,6 @@ function initParticleSystem(particle_settings)
     end
     particle_system:setColors(unpack(colors))
 	
---	ps:setColors(255, 255, 255, 255, 255, 255, 255, 0) -- Fade to transparency.
-
     particle_system:setDirection(math.rad(particle_settings["direction"] or 0))
     particle_system:setEmissionRate(particle_settings["emission_rate"] or 0)
     particle_system:setEmitterLifetime(particle_settings["emitter_lifetime"] or 0)
@@ -420,6 +330,9 @@ function initParticleSystem(particle_settings)
 	return particle_system
 end
 ---------------------------------------------------------------------------------------------------
+-- to preven particle emitter moving while in color picker dialog
+local mousemove_enabled = true
+
 function makeGUI()
 	
 	do
@@ -436,23 +349,30 @@ function makeGUI()
 			color = backgroundColor;
 			callback = function(color)
 				backgroundColor = color
+				mousemove_enabled = true
+			end,
+			onclick = function()
+				mousemove_enabled = false
+			end;
+			oncancel = function()
+				mousemove_enabled = true
 			end
 		}
+	
 		backgroundColorButton:SetPos(110, 5)
 	end
 
--- MAKING PANEL 
+-- MAKING TOOL PANEL 
   
-	local WIDTH = 290
+	local WIDTH = 286
 	local HEIGHT = love.window.getHeight()
   
 	rootPanel = loveframes.Create("panel")
 	rootPanel:SetSize(WIDTH, HEIGHT)
 	rootPanel:SetPos(0, 0)
-
 	
 	local list = loveframes.Create("list", rootPanel)
-	list:SetPos(0, 0) -- 0, 25
+	list:SetPos(0, 0)
 	list:SetSize(WIDTH, HEIGHT)
 	list:SetPadding(5)
 	list:SetSpacing(10)
@@ -480,15 +400,13 @@ function makeGUI()
 				end
 			end
 			
-			
 		local loadButton = loveframes.Create("button", panel)
 		loadButton:SetPos(5, 35)
 		loadButton:SetWidth(120)
 		loadButton:SetText("Load")
 		loadButton.OnClick = function(object, x, y)
-				
-				-- проверять что система в грязном состоянии и предупреждать об этом
-				
+				-- TODO: check if current setting in dirty state and ask user permission
+				-- to load	new settings otherwise save or discard changes
 				local loadForm = loadDialog(filesystem, {'Lua | *.lua', 'All | *.*'})
 				loadForm.window:SetModal(true)
 				loadForm.onOK = function(filepath)
@@ -508,28 +426,17 @@ function makeGUI()
 				local saveForm = saveDialog(filesystem, filename)
 				saveForm.window:SetModal(true)
 				saveForm.onOK = function(filepath)
-						saveParticleSystem(filepath)
+					saveParticleSystem(filepath)
 				end
 			end
 	end
-
 
 	-- particle panel
 	do
 		local panel = loveframes.Create("panel")
 		panel:SetHeight(255)
---[[
-		local collapsiblecategory = loveframes.Create("collapsiblecategory", frame)
-		collapsiblecategory:SetPos(0, 60)
-		collapsiblecategory:SetText("Particle")
-		collapsiblecategory:SetObject(panel)
-		
-		list:AddItem(collapsiblecategory)
-]]
 
 		list:AddItem(panel)
-
-
 
 		local files = love.filesystem.getDirectoryItems("")
 		local images = {}
@@ -544,6 +451,7 @@ function makeGUI()
 		makeDropdownList{
 			parent = panel,
 			label = "Filename",
+			x = 5,
 			y = 10,
 			values = images,
 			defaultValue = particle_settings.image,
@@ -558,6 +466,7 @@ function makeGUI()
 		makeDropdownList{
 			parent = panel,
 			label = "Blend mode",
+			x = 5,
 			y = 35,
 			values = {'additive', 'alpha', 'subtractive', 'multiplicative', 'premultiplied', 'replace'},
 			defaultValue = 'alpha',
@@ -571,6 +480,7 @@ function makeGUI()
 		makeDropdownList{
 			parent = panel,
 			label = "Insert mode",
+			x = 5,
 			y = 60,
 			values = {'top', 'bottom', 'random'},
 			defaultValue = particle_settings.insert_mode,
@@ -582,10 +492,9 @@ function makeGUI()
 			tooltip = "How newly created particles are added to the ParticleSystem."
 		}
 		
-		
 		local particlesTabs = loveframes.Create("tabs", panel)
 		particlesTabs:SetPos(5, 80)
-		particlesTabs:SetSize(WIDTH - 30 - 20, 85)
+		particlesTabs:SetSize(WIDTH - 50, 85)
 		
 		for i = 1,8 do
 		    local particlePanel = loveframes.Create("panel")
@@ -615,7 +524,8 @@ function makeGUI()
 					
 					local colors = {}
 					for i = 1, 8 do 
-						if particle_settings["colors"][i][1] ~= 0 or particle_settings["colors"][i][2] ~= 0 or particle_settings["colors"][i][3] ~= 0 or particle_settings["colors"][i][4] ~= 0 then
+						if particle_settings["colors"][i][1] ~= 0 or particle_settings["colors"][i][2] ~= 0 or
+						   particle_settings["colors"][i][3] ~= 0 or particle_settings["colors"][i][4] ~= 0 then
 							table.insert(colors, particle_settings["colors"][i][1] or 0)
 							table.insert(colors, particle_settings["colors"][i][2] or 0)
 							table.insert(colors, particle_settings["colors"][i][3] or 0)
@@ -628,7 +538,6 @@ function makeGUI()
 				end
 			}
 			button:SetPos(5, 24)
-			
 			
 			local alphaLabel = loveframes.Create("text", particlePanel)
 			alphaLabel:SetPos(60, 5)
@@ -651,7 +560,7 @@ function makeGUI()
 			slider:SetPos(50, 25)
 			slider:SetWidth(50)
 			slider:SetButtonSize(10, 20)
-			slider:SetDecimals(0) -- точек после запятой
+			slider:SetDecimals(0)
 			slider:SetMinMax(0, 255)
 			slider:SetValue(particle_settings["colors"][i][4] or 0)
 			slider.OnValueChanged = function(object)
@@ -672,7 +581,6 @@ function makeGUI()
 				end
 			
 			
-			
 			local sizeLabel = loveframes.Create("text", particlePanel)
 			sizeLabel:SetPos(150, 5)
 			sizeLabel:SetText("Size")
@@ -683,10 +591,10 @@ function makeGUI()
 			sizeLabelTooltip:SetText("Size by which to scale a particle sprite. 1.0 is normal size.")
 			
 			local sizeNumberbox = loveframes.Create("numberbox", particlePanel)
-			sizeNumberbox:SetPos(150, 20) -- 210, 10
+			sizeNumberbox:SetPos(150, 20)
 			sizeNumberbox:SetSize(55, 25)
 			sizeNumberbox:SetMinMax(0.01, 100)
-			sizeNumberbox:SetDecimals(2) -- точек после запятой
+			sizeNumberbox:SetDecimals(2)
 			sizeNumberbox:SetIncreaseAmount(0.1)
 			sizeNumberbox:SetDecreaseAmount(0.1)
 			sizeNumberbox:SetValue(particle_settings.sizes[i] or 1)
@@ -699,11 +607,11 @@ function makeGUI()
 			
 			particlesTabs:AddTab(tostring(i),  particlePanel, "Particle interpolation " ..tostring(i))
 		end
-
 	
 		makeSlider{
 			parent = panel,
 			label = "Size variations",
+			x = 5,
 			y = 170,
 			callback = function(value)
 					particle_settings.size_variation = value
@@ -719,11 +627,11 @@ function makeGUI()
 			decimals = 2,
 			tooltip = "The amount of size variation (0 meaning no variation and\n1 meaning full variation between start and end)."
 		}
-	
-	
+		
 		makeDoubleSlider{
 			parent = panel,
 			label = "Particle lifetime",
+			x = 5,
 			y = 170 + 45,
 			minCallback = function(value)
 					particle_settings.plifetime_min = value
@@ -752,20 +660,13 @@ function makeGUI()
 	do
 		local panel = loveframes.Create("panel")
 		panel:SetHeight(775)
---[[
-		local collapsiblecategory = loveframes.Create("collapsiblecategory", frame)
-		collapsiblecategory:SetPos(0, 85)
-		collapsiblecategory:SetText("Emitter")
-		collapsiblecategory:SetObject(panel)
-		
-		list:AddItem(collapsiblecategory)
-]]
-		list:AddItem(panel)
 
+		list:AddItem(panel)
 
 		makeSlider{
 			parent = panel,
 			label = "Particles",
+			x = 5,
 			y = 0,
 			callback = function(value)
 					particle_settings.buffer_size = value
@@ -785,6 +686,7 @@ function makeGUI()
 		makeSlider{
 			parent = panel,
 			label = "Emission Rate",
+			x = 5,
 			y = 45,
 			callback = function(value)
 					particle_settings.emission_rate  = value
@@ -804,6 +706,7 @@ function makeGUI()
 		makeSlider{
 			parent = panel,
 			label = "Emitter Lifetime",
+			x = 5,
 			y = 45 + 45,
 			callback = function(value)
 					value = value <= 0 and -1 or value
@@ -824,6 +727,7 @@ function makeGUI()
 		makeDropdownList{
 			parent = panel,
 			label = "Area Spread",
+			x = 5,
 			y = 45 + 45 + 45,
 			values = {'none', 'uniform', 'normal'},
 			defaultValue = particle_settings.area_spread_distribution or 'none',
@@ -836,16 +740,14 @@ function makeGUI()
 			tooltip = "Sets area-based spawn parameters for the particles"
 		}
 		
-		
-		
 		do
 			local label = loveframes.Create("text", panel)
-			label:SetPos(5, 45 + 45 + 45 + 30) -- 5,45
+			label:SetPos(5, 45 + 45 + 45 + 30)
 			label:SetLinksEnabled(false)
 			label:SetText("X spawn distance")
 			
 			local numberbox = loveframes.Create("numberbox", panel)
-			numberbox:SetPos(190, 45 + 45 + 45 + 25) -- 210, 10
+			numberbox:SetPos(190, 45 + 45 + 45 + 25)
 			numberbox:SetSize(65, 25)
 			
 			numberbox:SetIncreaseAmount(1)
@@ -868,21 +770,20 @@ function makeGUI()
 			tooltip:SetText("The maximum spawn distance from the emitter along the x-axis for uniform distribution,\nor the standard deviation along the x-axis for normal distribution.")
 		
 		end
-		
-		
+
 		do
 			local label = loveframes.Create("text", panel)
-			label:SetPos(5, 45 + 45 + 45 + 30 + 30) -- 5,45
+			label:SetPos(5, 45 + 45 + 45 + 30 + 30)
 			label:SetLinksEnabled(false)
 			label:SetText("Y spawn distance")
 			
 			local numberbox = loveframes.Create("numberbox", panel)
-			numberbox:SetPos(190, 45 + 45 + 45 + 25 + 30) -- 210, 10
+			numberbox:SetPos(190, 45 + 45 + 45 + 25 + 30)
 			numberbox:SetSize(65, 25)
 			
 			numberbox:SetIncreaseAmount(1)
 			numberbox:SetDecreaseAmount(1)
-			numberbox:SetMinMax(-1000 , 1000)
+			numberbox:SetMinMax(-1000, 1000)
 			numberbox:SetDecimals(0)			
 			
 			numberbox:SetValue(particle_settings.area_spread_dy or 0)
@@ -903,6 +804,7 @@ function makeGUI()
 		makeSlider{
 			parent = panel,
 			label = "Direction",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30,
 			callback = function(value)
 					particle_settings.direction = value
@@ -922,6 +824,7 @@ function makeGUI()
 		makeSlider{
 			parent = panel,
 			label = "Spread",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40,
 			callback = function(value)
 					particle_settings.spread = value
@@ -941,6 +844,7 @@ function makeGUI()
 		makeDoubleSlider{
 			parent = panel,
 			label = "Linear speed",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50,
 			minCallback = function(value)
 					particle_settings.speed_min = value
@@ -967,6 +871,7 @@ function makeGUI()
 		makeDoubleSlider{
 			parent = panel,
 			label = "Linear acceleration along x-axis",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50,
 			minCallback = function(value)
 					particle_settings.linear_acceleration_xmin = value
@@ -1001,6 +906,7 @@ function makeGUI()
 		makeDoubleSlider{
 			parent = panel,
 			label = "Linear acceleration along y-axis",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50 + 50,
 			minCallback = function(value)
 					particle_settings.linear_acceleration_ymin = value
@@ -1036,16 +942,15 @@ function makeGUI()
 		makeDoubleSlider{
 			parent = panel,
 			label = "Linear damping",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50 + 50 + 50,
 			minCallback = function(value)
-					--print("min value:"..value)
 					particle_settings.linear_damping_min = value
 					ps:setLinearDamping(particle_settings.linear_damping_min, particle_settings.linear_damping_max or 0)
 					
 					dirty = true
 				end,
 			maxCallback = function(value)
-					--print("max value:"..value)
 					particle_settings.linear_damping_max = value
 					ps:setLinearDamping(particle_settings.linear_damping_min or 0, particle_settings.linear_damping_max)
 					
@@ -1064,6 +969,7 @@ function makeGUI()
 		makeDoubleSlider{
 			parent = panel,
 			label = "Tangential acceleration",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50 + 50 + 50 + 50,
 			minCallback = function(value)
 					particle_settings.tangential_acceleration_min = value
@@ -1090,6 +996,7 @@ function makeGUI()
 		makeDoubleSlider{
 			parent = panel,
 			label = "Radial acceleration",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50 + 50 + 50 + 50 + 50,
 			minCallback = function(value)
 					particle_settings.radialacc_min = value
@@ -1116,6 +1023,7 @@ function makeGUI()
 		makeDoubleSlider{
 			parent = panel,
 			label = "Rotation",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50 + 50 + 50 + 50 + 50 + 50,
 			minCallback = function(value)
 					particle_settings.rotation_min = value
@@ -1142,6 +1050,7 @@ function makeGUI()
 		makeDoubleSlider{
 			parent = panel,
 			label = "Spin",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50 + 50 + 50 + 50 + 50 + 50 + 50,
 			minCallback = function(value)
 					particle_settings.spin_min = value
@@ -1168,6 +1077,7 @@ function makeGUI()
 		makeSlider{
 			parent = panel,
 			label = "Spin variation",
+			x = 5,
 			y = 45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50 + 50 + 50 + 50 + 50 + 50 + 50 + 45,
 			callback = function(value)
 					particle_settings.spin_variation = value
@@ -1191,7 +1101,6 @@ function makeGUI()
 			label:SetText("Realtive rotation")
 			
 			local checkbox = loveframes.Create("checkbox", panel)
-		--	checkbox:SetText("Checkbox")
 			checkbox:SetPos(190 + 45,  45 + 45 + 45 + 30 + 30 + 30 + 40 + 50 + 50 + 50 + 50 + 50 + 50 + 50 + 50 + 45 + 40)
 			checkbox:SetChecked(particle_settings.relative_rotation or false)
 			checkbox.OnChanged = function(object, checked)
@@ -1206,142 +1115,67 @@ function makeGUI()
 			tooltip:SetPadding(5)
 			tooltip:SetText("Whether particle angles and rotations are relative to their velocities.\nIf enabled, particles are aligned to the angle of their velocities and\nrotate relative to that angle.")
 		end
-		
 	end
-	
 end
-
 ---------------------------------------------------------------------------------------------------
 function love.load(arg)
-  
-	if arg[#arg] == "-debug" then
-		require("mobdebug").start()
-	end
-  
-    local sourceBasePath = love.filesystem.getSourceBaseDirectory()
-    print("# SourceBaseDirectory: "..sourceBasePath)
-
-    local appDataPath = love.filesystem.getAppdataDirectory()
-    print("# AppdataDirectory: "..appDataPath )
-
-    local saveDir = love.filesystem.getSaveDirectory()
-    print("# SaveDirectory: "..saveDir)
-
-
-    local identityDir = love.filesystem.getIdentity()
-    print("# IdentityDirectory: "..identityDir)
-
-    local userDir = love.filesystem.getUserDirectory()  
-    print("# User Directory: "..userDir)
-
-    local cwd = love.filesystem.getWorkingDirectory()
-    print("# Current Working Directory: "..cwd)
-	
-
-    local fused = love.filesystem.isFused()
-    if fused then
-        print("# Fused")
-    else
-        print("# Not fused")
-    end
+-- uncomment for debug in ZeroBrane Studio	
+	if arg[#arg] == "-debug" then require("mobdebug").start() end
+ 
+-- force making save directory
+	local success = love.filesystem.write(".hidden", "", 0)
  
 	filesystem = lovefs(love.filesystem.getSaveDirectory()) 
  
 	ps = initParticleSystem(particle_settings)
-	
     ps:setPosition(300 + (love.window.getWidth() - 300) / 2, love.window.getHeight() / 2)
+	ps:start() 
 	
 	makeGUI()
-	
-	ps:start() 
 end  
 ---------------------------------------------------------------------------------------------------
 function love.update(dt)
-    -- your code
     ps:update(dt)
-	
---[[	
-	if fsload.selectedFile then
-		--img = fsload:loadImage()
-		print("Loaded...."..fsload.selectedFile)
-		fsload.selectedFile = nil
-	end
-]]
     loveframes.update(dt)
 end
 ---------------------------------------------------------------------------------------------------
 function love.draw()
 	love.graphics.setBackgroundColor(unpack(backgroundColor))
 	
-    -- your code
 	love.graphics.setBlendMode(blendMode)
     love.graphics.draw(ps, 0, 0)
-
 
 	love.graphics.setBlendMode('alpha')
     loveframes.draw()
 end
 ---------------------------------------------------------------------------------------------------
-
-local mousepressed
-
 function love.mousepressed(x, y, button)
-
-    -- your code
-
-	-- если нажали кнопку вза пределами панели
 	if button == 'l' and x > 300 then
-		mousepressed = true
-
 		ps:start()
 	end
 
     loveframes.mousepressed(x, y, button)
-
 end
 ---------------------------------------------------------------------------------------------------
-function love.mousemoved(x, y, button)
-
-    -- your code
-
-	-- странно, но при удержании кнопка не передается
---	if button == 'l' then
-		
-	if mousepressed then
---	print(tostring(x)..","..tostring(y))		
+function love.mousemoved(x, y, dx, du)
+	if mousemove_enabled and love.mouse.isDown('l') then
 		ps:setPosition(x,y)
 	end
-
 end
 ---------------------------------------------------------------------------------------------------
 function love.mousereleased(x, y, button)
-
-    -- your code
-	mousepressed = false
     loveframes.mousereleased(x, y, button)
-
 end
 ---------------------------------------------------------------------------------------------------
 function love.keypressed(key, unicode)
-
-    -- your code
-
     loveframes.keypressed(key, unicode)
-
 end
 ---------------------------------------------------------------------------------------------------
 function love.keyreleased(key)
-
-    -- your code
-
     loveframes.keyreleased(key)
-
 end
 ---------------------------------------------------------------------------------------------------
 function love.textinput(text)
-
--- your code
-
   loveframes.textinput(text)
 end
 ---------------------------------------------------------------------------------------------------
